@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Medical Imaging – Chest X‑ray Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="topbar" role="banner">
+    <div class="container header-wrap">
+      <h1 class="app-title">Fast, privacy‑friendly chest X‑ray screening</h1>
+      <p id="subtitle" class="subtitle">
+        Upload an image to get an AI‑assisted assessment and a Grad‑CAM heatmap.
+        <span class="disclaimer" aria-describedby="disclaimer-tip">Not a medical diagnosis.</span>
+      </p>
+      <span id="disclaimer-tip" class="sr-only">
+        This tool is for screening support only and not a medical diagnosis.
+      </span>
+    </div>
+  </header>
+
+  <main id="main" class="container layout" role="main">
+    <!-- LEFT COLUMN -->
+    <section class="column column--main">
+      <form id="upload-form" class="card" method="POST" action="{{ url_for('analyze') }}" enctype="multipart/form-data" aria-describedby="upload-help">
+        <h2 class="card-title">Upload image</h2>
+
+        <div class="picker-row">
+          <input
+            id="file-input"
+            name="image"
+            type="file"
+            accept=".jpg,.jpeg,.png"
+            class="visually-hidden"
+            aria-labelledby="select-label"
+            onchange="handleFileSelect(this)"
+            required
+          />
+          <button type="button" id="select-label" class="btn primary" onclick="document.getElementById('file-input').click()">
+            Select image
+          </button>
+          <span id="file-name" class="file-name" aria-live="polite">No file selected</span>
+        </div>
+
+        <p id="upload-help" class="help-text">Allowed formats: JPG, JPEG, PNG. Max 10 MB.</p>
+
+        <div class="actions-row">
+          <button id="analyze-btn" type="submit" class="btn success" disabled aria-disabled="true">Analyze</button>
+          <button id="clear-btn" type="button" class="btn" onclick="clearSelection()">Clear</button>
+        </div>
+
+        <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+      </form>
+
+      <div class="preview-grid" role="region" aria-label="Image previews">
+        <figure class="preview card">
+          <figcaption class="preview-head">
+            <span class="preview-title">Original X‑ray</span>
+            <span class="preview-badge">Original</span>
+          </figcaption>
+          <img id="preview-original" alt="Selected X‑ray preview" />
+        </figure>
+
+        <figure class="preview card">
+          <figcaption class="preview-head">
+            <span class="preview-title">Grad‑CAM heatmap</span>
+            <span class="preview-badge">Top finding</span>
+          </figcaption>
+          {% if heatmap_url %}
+            <img id="preview-gradcam" src="{{ heatmap_url }}" alt="Grad‑CAM heatmap of most probable finding" />
+          {% else %}
+            <img id="preview-gradcam" alt="Grad‑CAM heatmap will appear after analysis" />
+          {% endif %}
+        </figure>
+      </div>
+
+      <section class="card" aria-labelledby="fsc-title">
+        <h2 id="fsc-title" class="card-title">Full Screening Card</h2>
+        <dl class="kv-list">
+          <div class="kv-row"><dt>Decision</dt><dd>{{ screening.decision if screening else '—' }}</dd></div>
+          <div class="kv-row"><dt>Risk tier</dt><dd>{{ screening.risk if screening else '—' }}</dd></div>
+          <div class="kv-row"><dt>Top finding</dt><dd>{{ screening.top_finding if screening else '—' }}</dd></div>
+        </dl>
+        <details class="json-details">
+          <summary class="summary-button" aria-controls="json-pre">JSON details</summary>
+          <pre id="json-pre" tabindex="0">{{ screening_json if screening_json else '{}' }}</pre>
+        </details>
+      </section>
+    </section>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="column column--sidebar" aria-label="Patient information">
+      <section class="card">
+        <h2 class="card-title">Patient Information</h2>
+
+        <div class="avatar-row">
+          <div class="avatar" role="img" aria-label="Patient photo placeholder"></div>
+          <button type="button" class="btn">Upload Photo</button>
+        </div>
+
+        <label class="field" for="pi-name">
+          <span class="label">Name</span>
+          <input id="pi-name" name="pi-name" type="text" placeholder="e.g., Sita KC" autocomplete="name" />
+        </label>
+
+        <label class="field" for="pi-dob">
+          <span class="label">Date of Birth</span>
+          <input id="pi-dob" name="pi-dob" type="date" inputmode="numeric" autocomplete="bday" aria-describedby="dob-help" />
+          <small id="dob-help" class="help-text">Format: YYYY‑MM‑DD</small>
+        </label>
+
+        <label class="field" for="pi-sex">
+          <span class="label">Sex</span>
+          <select id="pi-sex" name="pi-sex" autocomplete="sex">
+            <option>Female</option>
+            <option>Male</option>
+            <option>Other</option>
+            <option>Prefer not to say</option>
+          </select>
+        </label>
+
+        <label class="field" for="pi-contact">
+          <span class="label">Contact</span>
+          <input id="pi-contact" name="pi-contact" type="tel" placeholder="+977‑98..." inputmode="tel" autocomplete="tel" />
+        </label>
+
+        <label class="field" for="pi-notes">
+          <span class="label">Notes</span>
+          <textarea id="pi-notes" name="pi-notes" placeholder="Any clinical notes" rows="4"></textarea>
+        </label>
+
+        <div class="row-split">
+          <label class="field grow" for="lang-select">
+            <span class="label">Language</span>
+            <select id="lang-select" name="lang-select">
+              <option value="en" selected>English</option>
+              <option value="ne">नेपाली (Nepali)</option>
+            </select>
+          </label>
+
+          <div class="field toggle">
+            <span class="label">Dark</span>
+            <input id="dark-toggle" type="checkbox" role="switch" aria-checked="false" aria-label="Toggle dark mode" />
+          </div>
+        </div>
+
+        <button class="btn primary full" type="button" onclick="savePatient()">Save</button>
+
+        <p class="contact-us">
+          <a class="link" href="mailto:team@example.com">Contact us</a>
+        </p>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="container footer" role="contentinfo">
+    <small>© Team 8848 — Hackathon demo</small>
+  </footer>
+
+  <script>
+    function announce(msg){
+      const live = document.getElementById('live');
+      if(!live) return;
+      live.textContent = '';
+      setTimeout(()=>{ live.textContent = msg; }, 20);
+    }
+
+    function handleFileSelect(input) {
+      const fileNameEl = document.getElementById('file-name');
+      const analyzeBtn = document.getElementById('analyze-btn');
+
+      if (input.files && input.files.length > 0) {
+        const file = input.files[0];
+        fileNameEl.textContent = file.name;
+        analyzeBtn.disabled = false;
+        analyzeBtn.setAttribute('aria-disabled', 'false');
+        announce(file.name + ' selected');
+
+        const imgEl = document.getElementById('preview-original');
+        if (imgEl) {
+          const url = URL.createObjectURL(file);
+          imgEl.src = url;
+          imgEl.onload = () => URL.revokeObjectURL(url);
+        }
+      } else {
+        fileNameEl.textContent = 'No file selected';
+        analyzeBtn.disabled = true;
+        analyzeBtn.setAttribute('aria-disabled', 'true');
+      }
+    }
+
+    function clearSelection() {
+      const input = document.getElementById('file-input');
+      const fileNameEl = document.getElementById('file-name');
+      const analyzeBtn = document.getElementById('analyze-btn');
+
+      input.value = '';
+      fileNameEl.textContent = 'No file selected';
+      analyzeBtn.disabled = true;
+      analyzeBtn.setAttribute('aria-disabled', 'true');
+      announce('Selection cleared');
+
+      const imgEl = document.getElementById('preview-original');
+      if (imgEl) imgEl.src = '';
+      const camEl = document.getElementById('preview-gradcam');
+      if (camEl) camEl.src = '';
+      const jsonPre = document.getElementById('json-pre');
+      if (jsonPre) jsonPre.textContent = '{}';
+      document.getElementById('select-label').focus();
+    }
+
+    function savePatient() {
+      const data = {
+        name: document.getElementById('pi-name').value,
+        dob: document.getElementById('pi-dob').value,
+        sex: document.getElementById('pi-sex').value,
+        contact: document.getElementById('pi-contact').value,
+        notes: document.getElementById('pi-notes').value,
+        lang: document.getElementById('lang-select').value,
+        dark: document.getElementById('dark-toggle').checked
+      };
+      console.log('Patient saved:', data);
+      announce('Patient information saved');
+      alert('Patient info saved locally (demo).');
+    }
+
+    document.getElementById('dark-toggle').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      document.documentElement.dataset.theme = checked ? 'dark' : 'light';
+      e.target.setAttribute('aria-checked', checked ? 'true' : 'false');
+    });
+  </script>
+</body>
+</html>
