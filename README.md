@@ -15,7 +15,7 @@
 - [Overview](#overview)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
+- [Documentation](#documentation)
 - [Usage](#usage)
 - [Features](#features)
 - [Screenshots](#screenshots)
@@ -42,7 +42,7 @@
 ---
 
 ## Overview
-**RespiScan AI** is a Flask-powered web app for **rapid chest X-ray screening**.  
+**InsightX** is a Flask-powered web app for **rapid X-ray screening**.  
 Upload an image (JPG/PNG/PDF/DICOM), get **predictions** and **explainability** overlays (Grad-CAM), and view a structured **screening card**.
 
 ---
@@ -81,47 +81,7 @@ FrontEnd_Flask/
 
 ---
 
-## Quick Start
-
-> 🪟 **Windows (PowerShell)**
-
-1) **Open project folder**
-```
-cd C:\path\to\FrontEnd_Flask
-```
-
-2) **Create & activate a virtual environment**
-```
-py -m venv venv
-venv\Scripts\Activate
-```
-
-3) **Install dependencies**
-```
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-4) **Run the server**
-```
-python app.py
-```
-
-5) **Open the app**
-```
-http://127.0.0.1:5000
-```
-
-> 🍎 **macOS / Linux**
-```
-cd /path/to/FrontEnd_Flask
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-python app.py
-# open http://127.0.0.1:5000
-```
+## Documentation
 
 ---
 
