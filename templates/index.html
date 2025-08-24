@@ -1,237 +1,279 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI Medical Imaging – Chest X‑ray Analyzer</title>
+  <title>RespiScan AI — Chest X-ray Screening</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-  <a class="skip-link" href="#main">Skip to main content</a>
+<body
+  class="{% if (summary_np or (request.form.get('lang')=='np')) %}lang-np{% endif %}"
+  data-home="{{ url_for('index') }}"
+>
 
-  <header class="topbar" role="banner">
-    <div class="container header-wrap">
-      <h1 class="app-title">Fast, privacy‑friendly chest X‑ray screening</h1>
-      <p id="subtitle" class="subtitle">
-        Upload an image to get an AI‑assisted assessment and a Grad‑CAM heatmap.
-        <span class="disclaimer" aria-describedby="disclaimer-tip">Not a medical diagnosis.</span>
-      </p>
-      <span id="disclaimer-tip" class="sr-only">
-        This tool is for screening support only and not a medical diagnosis.
-      </span>
+  <!-- App Bar (title centered) -->
+  <header class="appbar appbar-center">
+    <button id="btnMenu" class="icon-btn" aria-label="Open settings">☰</button>
+    <div class="brand center">
+      <div class="logo" aria-hidden="true">🫁</div>
+      <div>
+        <h1>RespiScan AI</h1>
+        <p>Fast, simple chest X-ray screening — 🇳🇵 Nepali & English</p>
+      </div>
+    </div>
+    <div class="right-actions">
+      <button id="btnReport" class="btn secondary" type="button">💬 Feedback</button>
     </div>
   </header>
 
-  <main id="main" class="container layout" role="main">
-    <!-- LEFT COLUMN -->
-    <section class="column column--main">
-      <form id="upload-form" class="card" method="POST" action="{{ url_for('analyze') }}" enctype="multipart/form-data" aria-describedby="upload-help">
-        <h2 class="card-title">Upload image</h2>
-
-        <div class="picker-row">
-          <input
-            id="file-input"
-            name="image"
-            type="file"
-            accept=".jpg,.jpeg,.png"
-            class="visually-hidden"
-            aria-labelledby="select-label"
-            onchange="handleFileSelect(this)"
-            required
-          />
-          <button type="button" id="select-label" class="btn primary" onclick="document.getElementById('file-input').click()">
-            Select image
-          </button>
-          <span id="file-name" class="file-name" aria-live="polite">No file selected</span>
-        </div>
-
-        <p id="upload-help" class="help-text">Allowed formats: JPG, JPEG, PNG. Max 10 MB.</p>
-
-        <div class="actions-row">
-          <button id="analyze-btn" type="submit" class="btn success" disabled aria-disabled="true">Analyze</button>
-          <button id="clear-btn" type="button" class="btn" onclick="clearSelection()">Clear</button>
-        </div>
-
-        <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
-      </form>
-
-      <div class="preview-grid" role="region" aria-label="Image previews">
-        <figure class="preview card">
-          <figcaption class="preview-head">
-            <span class="preview-title">Original X‑ray</span>
-            <span class="preview-badge">Original</span>
-          </figcaption>
-          <img id="preview-original" alt="Selected X‑ray preview" />
-        </figure>
-
-        <figure class="preview card">
-          <figcaption class="preview-head">
-            <span class="preview-title">Grad‑CAM heatmap</span>
-            <span class="preview-badge">Top finding</span>
-          </figcaption>
-          {% if heatmap_url %}
-            <img id="preview-gradcam" src="{{ heatmap_url }}" alt="Grad‑CAM heatmap of most probable finding" />
-          {% else %}
-            <img id="preview-gradcam" alt="Grad‑CAM heatmap will appear after analysis" />
-          {% endif %}
-        </figure>
+  <!-- Settings Drawer -->
+  <aside id="drawer" class="drawer" aria-label="Settings">
+    <div class="drawer-head">
+      <strong>Settings</strong>
+      <button id="btnClose" class="btn secondary" type="button">Close</button>
+    </div>
+    <div class="drawer-body">
+      <div class="switch-row">
+        <label for="toggleDark">Dark mode</label>
+        <input id="toggleDark" type="checkbox" />
+      </div>
+      <div class="switch-row">
+        <label for="toggleNepaliFont">Use Nepali font</label>
+        <input id="toggleNepaliFont" type="checkbox" />
       </div>
 
-      <section class="card" aria-labelledby="fsc-title">
-        <h2 id="fsc-title" class="card-title">Full Screening Card</h2>
-        <dl class="kv-list">
-          <div class="kv-row"><dt>Decision</dt><dd>{{ screening.decision if screening else '—' }}</dd></div>
-          <div class="kv-row"><dt>Risk tier</dt><dd>{{ screening.risk if screening else '—' }}</dd></div>
-          <div class="kv-row"><dt>Top finding</dt><dd>{{ screening.top_finding if screening else '—' }}</dd></div>
-        </dl>
-        <details class="json-details">
-          <summary class="summary-button" aria-controls="json-pre">JSON details</summary>
-          <pre id="json-pre" tabindex="0">{{ screening_json if screening_json else '{}' }}</pre>
-        </details>
-      </section>
-    </section>
+      <div class="hr"></div>
 
-    <!-- RIGHT SIDEBAR -->
-    <aside class="column column--sidebar" aria-label="Patient information">
-      <section class="card">
-        <h2 class="card-title">Patient Information</h2>
-
-        <div class="avatar-row">
-          <div class="avatar" role="img" aria-label="Patient photo placeholder"></div>
-          <button type="button" class="btn">Upload Photo</button>
+      <div>
+        <div class="lbl">Language</div>
+        <div class="lang-choices">
+          <label><input type="radio" name="lang" value="en" checked> English</label>
+          <label><input type="radio" name="lang" value="np"> नेपाली</label>
         </div>
+      </div>
 
-        <label class="field" for="pi-name">
-          <span class="label">Name</span>
-          <input id="pi-name" name="pi-name" type="text" placeholder="e.g., Sita KC" autocomplete="name" />
-        </label>
+      <div>
+        <div class="lbl">Text size</div>
+        <div class="lang-choices">
+          <label><input type="radio" name="ts" value="sm"> Small</label>
+          <label><input type="radio" name="ts" value="md" checked> Medium</label>
+          <label><input type="radio" name="ts" value="lg"> Large</label>
+        </div>
+      </div>
 
-        <label class="field" for="pi-dob">
-          <span class="label">Date of Birth</span>
-          <input id="pi-dob" name="pi-dob" type="date" inputmode="numeric" autocomplete="bday" aria-describedby="dob-help" />
-          <small id="dob-help" class="help-text">Format: YYYY‑MM‑DD</small>
-        </label>
+      <div class="hr"></div>
 
-        <label class="field" for="pi-sex">
-          <span class="label">Sex</span>
-          <select id="pi-sex" name="pi-sex" autocomplete="sex">
-            <option>Female</option>
-            <option>Male</option>
-            <option>Other</option>
-            <option>Prefer not to say</option>
-          </select>
-        </label>
+      <div>
+        <div class="lbl">Voice tips</div>
+        <label class="tiny"><input type="checkbox" id="voiceAuto"> Auto-play after selecting image</label>
+        <p class="tiny muted">The app will speak instructions in the selected language.</p>
+      </div>
+    </div>
+  </aside>
+  <div id="scrim" class="scrim"></div>
 
-        <label class="field" for="pi-contact">
-          <span class="label">Contact</span>
-          <input id="pi-contact" name="pi-contact" type="tel" placeholder="+977‑98..." inputmode="tel" autocomplete="tel" />
-        </label>
+  <!-- Hero / How it works -->
+  <section class="hero">
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-icon">📸</div>
+        <div class="how-text"><strong>1) Upload</strong><br><span class="muted tiny">फोटो छान्नुहोस्</span></div>
+      </div>
+      <div class="how-step">
+        <div class="how-icon">🤖</div>
+        <div class="how-text"><strong>2) Analyze</strong><br><span class="muted tiny">एआईले जाँच गर्छ</span></div>
+      </div>
+      <div class="how-step">
+        <div class="how-icon">📄</div>
+        <div class="how-text"><strong>3) Report</strong><br><span class="muted tiny">PDF डाउनलोड</span></div>
+      </div>
+    </div>
+  </section>
 
-        <label class="field" for="pi-notes">
-          <span class="label">Notes</span>
-          <textarea id="pi-notes" name="pi-notes" placeholder="Any clinical notes" rows="4"></textarea>
-        </label>
+  <!-- Main two-column: LEFT = Upload+Patient form, RIGHT = Patient + Results -->
+  <main class="shell two-col">
+    {% if error %}
+      <div class="alert error" role="alert">⚠️ {{ error }}</div>
+    {% endif %}
 
-        <div class="row-split">
-          <label class="field grow" for="lang-select">
-            <span class="label">Language</span>
-            <select id="lang-select" name="lang-select">
-              <option value="en" selected>English</option>
-              <option value="ne">नेपाली (Nepali)</option>
-            </select>
-          </label>
+    <!-- LEFT -->
+    <section>
+      <form id="analyzeForm" class="step-card" method="post" enctype="multipart/form-data" action="{{ url_for('analyze') }}">
+        <h2><span class="step-num">1</span> Upload Chest X-ray</h2>
+        <p class="muted">JPG or PNG. We’ll make a side-by-side heatmap and a one-page report PDF.</p>
 
-          <div class="field toggle">
-            <span class="label">Dark</span>
-            <input id="dark-toggle" type="checkbox" role="switch" aria-checked="false" aria-label="Toggle dark mode" />
+        <div class="stack">
+          <div>
+            <div class="lbl">Image <span class="tiny muted">/ फोटो अपलोड</span></div>
+            <input id="fileInput" class="input" type="file" name="image" accept="image/*" required aria-label="Choose chest X-ray image">
+            <div class="tiny muted">टिप्स: छवि स्पष्ट, छाती बीचमा, झन् उज्यालो।</div>
+          </div>
+
+          <div class="grid2">
+            <div>
+              <div class="lbl">Language / भाषा</div>
+              <select id="langSelect" class="input" name="lang" aria-label="Language">
+                <option value="en" {% if not request.form.get('lang') or request.form.get('lang')=='en' %}selected{% endif %}>English</option>
+                <option value="np" {% if request.form.get('lang')=='np' %}selected{% endif %}>नेपाली</option>
+              </select>
+            </div>
+            <div>
+              <div class="lbl">Quick Tips / सजिलो टिप्स</div>
+              <div class="tiny muted">• No blur • Good lighting • Chest centered</div>
+            </div>
           </div>
         </div>
 
-        <button class="btn primary full" type="button" onclick="savePatient()">Save</button>
+        <div class="hr"></div>
 
-        <p class="contact-us">
-          <a class="link" href="mailto:team@example.com">Contact us</a>
-        </p>
-      </section>
+        <h2><span class="step-num">2</span> Patient details</h2>
+        <div class="grid3">
+          <div>
+            <div class="lbl">Full name / पुरा नाम</div>
+            <input class="input" type="text" name="patient_name" placeholder="e.g., Sita Rai" />
+          </div>
+          <div>
+            <div class="lbl">Age / उमेर</div>
+            <input class="input" type="number" min="0" max="120" name="patient_age" placeholder="e.g., 45" />
+          </div>
+          <div>
+            <div class="lbl">Sex / लिङ्ग</div>
+            <select class="input" name="patient_sex">
+              <option value="F" selected>F</option>
+              <option value="M">M</option>
+              <option value="—">—</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="lbl">Patient ID (optional) / बिरामी आईडी</div>
+          <input class="input" type="text" name="patient_id" placeholder="Auto-generate if blank" />
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" type="submit">🔍 Analyze</button>
+          <button class="btn secondary" type="reset">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- RIGHT -->
+    <aside>
+      <div class="step-card">
+        <h2><span class="step-num">👤</span> Patient</h2>
+        {% set p = patient or {} %}
+        <div class="profile-row" style="margin-top:6px">
+          <div class="avatar" aria-hidden="true">{{ (p.get('name','P') or 'P')[0:1] }}</div>
+          <div>
+            <div class="pname">{{ p.get('name','—') }}</div>
+            <div class="muted tiny">Basic details</div>
+          </div>
+        </div>
+
+        <div class="stat-chips" aria-label="Patient details">
+          <span class="stat">🆔 <strong>{{ p.get('id','—') }}</strong></span>
+          <span class="stat">🎂 Age: <strong>{{ p.get('age','—') }}</strong></span>
+          <span class="stat">⚧ Sex: <strong>{{ p.get('sex','—') }}</strong></span>
+        </div>
+      </div>
+
+      {% if decision %}
+      <div class="step-card" aria-live="polite">
+        <h2><span class="step-num">3</span> Results</h2>
+
+        <div class="kpis">
+          <span class="chip {% if risk_tier=='Low' %}healthy{% elif risk_tier=='Medium' %}attention{% else %}danger{% endif %}">
+            {% if risk_tier=='Low' %}✅{% elif risk_tier=='Medium' %}⚠️{% else %}❌{% endif %}
+            Risk: {{ risk_tier }}
+          </span>
+          <span class="chip">🧠 Decision: <strong>{{ decision }}</strong></span>
+          {% if suspected %}<span class="chip">🔎 Top finding: {{ suspected }}</span>{% endif %}
+        </div>
+
+        <div class="risk-bar" aria-label="Risk meter" title="जोखिम स्तर">
+          {% set tier = risk_tier or 'Low' %}
+          {% set w = '30%' if tier=='Low' else ('65%' if tier=='Medium' else '95%') %}
+          <span class="{% if tier=='Low' %}risk-low{% elif tier=='Medium' %}risk-mid{% else %}risk-high{% endif %}" style="width: {{ w }}"></span>
+        </div>
+
+        {% if headline %}<p><strong>Summary:</strong> {{ headline }}</p>{% endif %}
+
+        {% if summary_en %}
+          <details class="frame" style="margin-top:8px">
+            <summary><strong>English explanation</strong></summary>
+            <div class="tiny" style="margin-top:6px">
+              {% if summary_en.impression %}<p><strong>Impression:</strong> {{ summary_en.impression }}</p>{% endif %}
+              {% if summary_en.consider and summary_en.consider|length > 0 %}
+                <p><strong>Key points:</strong></p>
+                <ul>
+                  {% for c in summary_en.consider[:3] %}<li>{{ c }}</li>{% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+          </details>
+        {% endif %}
+
+        {% if summary_np %}
+          <details class="frame" style="margin-top:8px">
+            <summary><strong>नेपाली व्याख्या</strong></summary>
+            <div class="tiny" style="margin-top:6px">
+              {% if summary_np.impression %}<p><strong>निष्कर्ष:</strong> {{ summary_np.impression|safe }}</p>{% endif %}
+              {% if summary_np.consider and summary_np.consider|length > 0 %}
+                <p><strong>मुख्य कुरा:</strong></p>
+                <ul>
+                  {% for c in summary_np.consider[:3] %}<li>{{ c|safe }}</li>{% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+          </details>
+        {% endif %}
+
+        <div class="two-up bigger-images" style="margin-top:12px">
+          <figure class="frame">
+            {% if orig_url %}<img class="preview" src="{{ orig_url }}" alt="Uploaded chest X-ray">{% endif %}
+            <figcaption class="cap">Original</figcaption>
+          </figure>
+          <figure class="frame">
+            {% if cam_url %}<img class="preview" src="{{ cam_url }}" alt="Grad-CAM heatmap overlay">{% endif %}
+            <figcaption class="cap">AI heatmap</figcaption>
+          </figure>
+        </div>
+
+        <div class="actions" style="margin-top:12px">
+          {% if pdf_url %}<a class="btn primary" href="{{ pdf_url }}" target="_blank" rel="noopener">📄 Download report (PDF)</a>{% endif %}
+        </div>
+
+        <details class="accordion" style="margin-top:8px">
+          <summary>Advanced: See raw scores (JSON)</summary>
+          <pre class="json">{{ card_json }}</pre>
+        </details>
+      </div>
+      {% endif %}
     </aside>
   </main>
 
-  <footer class="container footer" role="contentinfo">
-    <small>© Team 8848 — Hackathon demo</small>
-  </footer>
+  <!-- Loading Overlay -->
+  <div id="loading" class="loading hidden" role="alert" aria-live="assertive">
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="loadtext">Analyzing X-ray… Please wait</div>
+  </div>
 
-  <script>
-    function announce(msg){
-      const live = document.getElementById('live');
-      if(!live) return;
-      live.textContent = '';
-      setTimeout(()=>{ live.textContent = msg; }, 20);
-    }
+  <!-- Feedback Dialog -->
+  <dialog id="dlgFeedback" style="border:none;border-radius:16px;padding:0;max-width:480px;width:90%">
+    <form method="dialog" style="padding:16px">
+      <h3 style="margin:0 0 8px">Send Feedback</h3>
+      <p class="tiny muted" style="margin-top:0">How can we make this easier for everyone in Nepal?</p>
+      <textarea id="fbText" class="input" rows="5" placeholder="Your message…"></textarea>
+      <div class="actions right">
+        <button class="btn secondary" value="cancel">Cancel</button>
+        <button id="fbSend" class="btn primary">Send</button>
+      </div>
+    </form>
+  </dialog>
 
-    function handleFileSelect(input) {
-      const fileNameEl = document.getElementById('file-name');
-      const analyzeBtn = document.getElementById('analyze-btn');
-
-      if (input.files && input.files.length > 0) {
-        const file = input.files[0];
-        fileNameEl.textContent = file.name;
-        analyzeBtn.disabled = false;
-        analyzeBtn.setAttribute('aria-disabled', 'false');
-        announce(file.name + ' selected');
-
-        const imgEl = document.getElementById('preview-original');
-        if (imgEl) {
-          const url = URL.createObjectURL(file);
-          imgEl.src = url;
-          imgEl.onload = () => URL.revokeObjectURL(url);
-        }
-      } else {
-        fileNameEl.textContent = 'No file selected';
-        analyzeBtn.disabled = true;
-        analyzeBtn.setAttribute('aria-disabled', 'true');
-      }
-    }
-
-    function clearSelection() {
-      const input = document.getElementById('file-input');
-      const fileNameEl = document.getElementById('file-name');
-      const analyzeBtn = document.getElementById('analyze-btn');
-
-      input.value = '';
-      fileNameEl.textContent = 'No file selected';
-      analyzeBtn.disabled = true;
-      analyzeBtn.setAttribute('aria-disabled', 'true');
-      announce('Selection cleared');
-
-      const imgEl = document.getElementById('preview-original');
-      if (imgEl) imgEl.src = '';
-      const camEl = document.getElementById('preview-gradcam');
-      if (camEl) camEl.src = '';
-      const jsonPre = document.getElementById('json-pre');
-      if (jsonPre) jsonPre.textContent = '{}';
-      document.getElementById('select-label').focus();
-    }
-
-    function savePatient() {
-      const data = {
-        name: document.getElementById('pi-name').value,
-        dob: document.getElementById('pi-dob').value,
-        sex: document.getElementById('pi-sex').value,
-        contact: document.getElementById('pi-contact').value,
-        notes: document.getElementById('pi-notes').value,
-        lang: document.getElementById('lang-select').value,
-        dark: document.getElementById('dark-toggle').checked
-      };
-      console.log('Patient saved:', data);
-      announce('Patient information saved');
-      alert('Patient info saved locally (demo).');
-    }
-
-    document.getElementById('dark-toggle').addEventListener('change', (e) => {
-      const checked = e.target.checked;
-      document.documentElement.dataset.theme = checked ? 'dark' : 'light';
-      e.target.setAttribute('aria-checked', checked ? 'true' : 'false');
-    });
-  </script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
