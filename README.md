@@ -1,4 +1,4 @@
-# 🩺 RespiScan AI — Chest X-ray Screening (Flask + ML)
+# 🩺 InsightX — X-ray Screening AI (Flask + ML)
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white" />
@@ -25,17 +25,19 @@
 - [Credits](#credits)
 
 ---
- ## 👥 Team Members
+ ## Team Members 👥
 
-  > **Note:** Names are listed in **alphabetical order** and **do not reflect the level of contributions**.
+  > **Note:** Names are listed in **alphabetical order** (except team lead) and **do not reflect the level of contributions**. 
 
-| Name | GitHub |
-|------|--------|
-| Aayusha Pokharel | [@ap4678](https://github.com/ap4678) |
-| Bivan Prajapati | [@bivanPrajapati](https://github.com/BivanPrajapati) |
-| Menuka Ghalan | [@menukaghalan](https://github.com/menukaghalan) |
-| Rishav Mishra | [@tokito-99](https://github.com/tokito-99) |
-| Seema Gupta | [@gupta-seema](https://github.com/gupta-seema) |
+| Member | Role | GitHub |
+|--------|------|--------|
+| Rishav Mishra | Team Lead, ML Modelling| [@tokito-99](https://github.com/tokito-99) |
+| Aayusha Pokharel | Front-end| [@ap4678](https://github.com/ap4678) |
+| Bivan Prajapati | Front-end | [@bivanPrajapati](https://github.com/BivanPrajapati) |
+| Menuka Ghalan | Back-end|[@menukaghalan](https://github.com/menukaghalan) |
+| Seema Gupta | Back-end|[@gupta-seema](https://github.com/gupta-seema) |
+
+> **Collaboration Note:** Although roles were initially divided as above, the project was highly collaborative. Each of us contributed beyond our initial responsibilities across all areas--from ideation, coding, debugging, documentation to presentation.
 
 ---
 
